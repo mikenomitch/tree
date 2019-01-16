@@ -1,32 +1,47 @@
-use rand::Rng;
-use std::cmp::Ordering;
-use std::io;
+use std::fs;
+use std::path::Path;
+
+extern crate colored;
+use colored::*;
+
+fn get_end(path: &str) -> (&str) {
+    match path.split("/").last() {
+        Some(st) => st,
+        None => "ERROR",
+    }
+}
+
+fn show(path: &str, prepend: &str, level: u32) {
+    let is_file = Path::new(&path).is_file();
+
+    if is_file {
+        println!("{} {}", prepend, get_end(path).green());
+    } else {
+        println!("{} {}", prepend, get_end(path).yellow());
+        let new_prepend = format!("  {}", prepend);
+        let next_level = level + 1;
+        handle_path(path, &new_prepend, next_level)
+    }
+}
+
+fn handle_path(base_path: &str, prepend: &str, level: u32) {
+    if level > 2 {
+        println!("  {}{}...", prepend, get_end(base_path).yellow());
+        return;
+    }
+
+    let paths = fs::read_dir(base_path).unwrap();
+
+    for path in paths {
+        let path_str = path.unwrap().path().to_string_lossy().to_string();
+        show(&path_str, &prepend, level);
+    }
+}
 
 fn main() {
-    let secret_number = rand::thread_rng().gen_range(1, 100);
+    let base_path = "./";
+    let initial_prepend = "";
+    let level = 0;
 
-    println!("Guess a number, 1 to 100!");
-
-    loop {
-        println!("Your guess:");
-        let mut guess = String::new();
-
-        io::stdin()
-            .read_line(&mut guess)
-            .expect("Failed to read line");
-
-        let guess: u32 = match guess.trim().parse() {
-            Ok(num) => num,
-            Err(_) => continue,
-        };
-
-        match guess.cmp(&secret_number) {
-            Ordering::Less => println!("Too Small"),
-            Ordering::Greater => println!("Too Big"),
-            Ordering::Equal => {
-                println!("GOT IT!");
-                break;
-            }
-        }
-    }
+    handle_path(&base_path, &initial_prepend, level);
 }
